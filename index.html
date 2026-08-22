@@ -1380,5 +1380,27 @@ const V7Data=(()=>{
   if(V7Data.read(V7Data.KEYS.draft,null)?.fields?.name&&!sessionStorage.getItem('v7DraftPrompted')){sessionStorage.setItem('v7DraftPrompted','1');setTimeout(()=>{if(confirm('前回の入力途中の顧客情報を復元しますか？')){V7Data.restoreDraft();V7Mobile.showWork()}},350)}
 })();
 </script>
+<style>
+.v7-mobile-add-inline{display:none}.v7-card-delete-surface{display:none}
+@media(max-width:900px){.v7-mobile-add-inline{display:block;width:100%;margin:0 0 10px;padding:12px;border:1px solid #2563eb;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:900;text-align:center;cursor:pointer}.v7-card-delete-surface{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border:0;border-radius:8px;background:#fff1f2;color:#b42318;font-size:18px;cursor:pointer}.v7-card-summary{grid-template-columns:22px 1fr auto auto auto!important}.v7-expense-direct{width:112px!important;text-align:right;font-weight:800}}
+</style>
+<script>
+/* Mobile estimate editing refinements */
+(function(){
+  const originalAdjust=V7.adjustItem;
+  V7.adjustItem=function(index,delta){return originalAdjust(index,delta<0?-1000:1000)};
+  function decorateCards(){
+    document.querySelectorAll('#v7MobileItems .v7-card-item:not(.heading)').forEach(card=>{
+      const summary=card.querySelector('.v7-card-summary');if(!summary||summary.querySelector('.v7-card-delete-surface'))return;
+      const index=Number(card.dataset.index);const del=document.createElement('button');del.type='button';del.className='v7-card-delete-surface';del.textContent='×';del.title='削除';del.onclick=e=>{e.stopPropagation();V7.removeItem(index)};summary.appendChild(del);
+    });
+    document.querySelectorAll('[onclick*="V7.adjustItem"]').forEach(btn=>{if(btn.textContent.includes('100'))btn.textContent=btn.textContent.replace(/100/g,'1,000')});
+  }
+  function installInlineAdd(){const drop=document.getElementById('v7DropZone');if(drop&&!document.getElementById('v7MobileAddInline')){const b=document.createElement('button');b.id='v7MobileAddInline';b.className='v7-mobile-add-inline';b.type='button';b.textContent='＋ 項目を追加';b.onclick=()=>V7.openSheet();drop.insertBefore(b,document.getElementById('v7MobileItems'))}}
+  function installExpenseInput(){const sum=document.getElementById('v7Expense');if(!sum||document.getElementById('v7ExpenseDirect'))return;const input=document.createElement('input');input.id='v7ExpenseDirect';input.className='v7-expense-direct';input.type='number';input.step='1000';input.min='0';input.title='諸経費を直接入力';input.value=(sum.textContent||'0').replace(/[^0-9-]/g,'');input.addEventListener('change',()=>{const now=Number((sum.textContent||'0').replace(/[^0-9-]/g,''))||0,target=Math.max(0,Number(input.value)||0);V7.adjustExpense(target-now);setTimeout(()=>input.value=(document.getElementById('v7Expense').textContent||'0').replace(/[^0-9-]/g,''),0)});sum.parentElement.insertBefore(input,sum)}
+  installInlineAdd();installExpenseInput();decorateCards();
+  new MutationObserver(()=>{installInlineAdd();installExpenseInput();decorateCards()}).observe(document.getElementById('v7App'),{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>
