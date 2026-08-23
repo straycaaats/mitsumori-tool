@@ -70,7 +70,7 @@ Sync.pull=()=>new Promise((resolve,reject)=>{
   const script=document.createElement('script');
   const timer=setTimeout(()=>finish(new Error('Googleからの読込がタイムアウトしました')),15000);
   function finish(error,data){clearTimeout(timer);delete window[callback];script.remove();error?reject(error):resolve(data)}
-  window[callback]=result=>{if(!result||!result.ok)return finish(new Error(result?.error||'読込に失敗しました'));const data=result.data||{};if(Array.isArray(data.masters)&&data.masters.length)Catalog.saveMasters(data.masters);if(Array.isArray(data.templates)&&data.templates.length)Catalog.saveTemplates(data.templates);finish(null,data)};
+  window[callback]=result=>{if(!result||!result.ok)return finish(new Error(result?.error||'読込に失敗しました'));const data=result.data||{};const masters=(Array.isArray(data.masters)?data.masters:[]).filter(m=>m&&m.id&&m.name);const ids=new Set(masters.map(m=>m.id));const templates=(Array.isArray(data.templates)?data.templates:[]).map(t=>({...t,items:(t.items||[]).filter(id=>ids.has(id))})).filter(t=>t.items.length);if(masters.length&&templates.length){Catalog.saveMasters(masters);Catalog.saveTemplates(templates)}finish(null,data)};
   script.onerror=()=>finish(new Error('Googleへ接続できません'));
   script.src=url;document.head.appendChild(script);
 });
@@ -79,6 +79,13 @@ Sync.push=async()=>{
   await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'pushMasters',data:{masters:Catalog.masters(),templates:Catalog.templates()}})});
   return {queued:true};
 };
+</script>
+<script>
+/* A previous malformed shared template has no resolvable master IDs. Recover only that broken cache. */
+const cleanCachedTemplates=Catalog.templates();
+if(cleanCachedTemplates.length&&!cleanCachedTemplates.some(t=>Array.isArray(t.items)&&t.items.length)){
+  localStorage.removeItem('mitsumori.clean.masters');
+  localStorage.removeItem('mitsumori.clean.templates');
+  location.reload();
+}
 </script></body></html>
-
-
