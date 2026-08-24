@@ -101,7 +101,7 @@ const groupOptions=v=>groups.map(x=>'<option value="'+x[0]+'"'+(x[0]===v?' selec
 const row=x=>'<div class="edit-row" data-clean-row data-master-id="'+esc(x.id||'')+'"><button class="btn sm" type="button" onclick="App.moveCleanRow(this,-1)">↑</button><input class="name" value="'+esc(x.name)+'" placeholder="品名"><input class="desc" value="'+esc(x.desc)+'" placeholder="概要"><input class="qty" type="number" inputmode="decimal" value="'+(+x.qty||0)+'"><select class="unit">'+unitOptions(x.unit||'式')+'</select><input class="price" type="number" inputmode="numeric" value="'+(+x.price||0)+'"><select class="group">'+groupOptions(x.group||'')+'</select><button class="btn sm" type="button" onclick="App.moveCleanRow(this,1)">↓</button><button class="icon" type="button" onclick="this.parentElement.remove()">×</button></div>';
 App.openWarehouse=function(){const ts=Catalog.templates(),ms=Catalog.masters();modal('<h2>倉庫</h2><div class="warehouse-head"><span>セット</span><button class="btn sm" onclick="App.newTemplate()">＋ セットを作る</button></div><div class="warehouse-list">'+ts.map(t=>'<div class="warehouse-card"><button class="warehouse-title" onclick="App.addTemplate(\''+t.id+'\')"><strong>'+esc(t.name)+'</strong><small>'+(t.items||[]).length+'項目 · タップで追加</small></button><button class="btn sm" onclick="App.editTemplate(\''+t.id+'\')">編集</button></div>').join('')+'</div><div class="warehouse-head standalone-head"><span>単品</span><button class="btn sm" onclick="App.openMaster()">＋ 単品を作る</button></div><div class="master-list">'+ms.map(m=>'<button class="master-card" onclick="App.addMasterToEstimate(\''+m.id+'\')"><strong>'+esc(m.name)+'</strong><small>'+esc(m.unit||'式')+' · ¥'+Number(m.price||0).toLocaleString()+' · タップで追加</small></button>').join('')+'</div><div class="modal-actions"><button class="btn" onclick="App.close()">閉じる</button></div>')};
 App.addMasterToEstimate=function(id){if(!Catalog.masters().some(m=>m.id===id))return;const ts=Catalog.templates(),temp='single-'+Date.now();Catalog.saveTemplates(ts.concat([{id:temp,trade:'other',name:'一時単品',items:[id]}]));App.addTemplate(temp);Catalog.saveTemplates(ts)};
-App.editTemplate=function(id){const ts=Catalog.templates(),base=id?ts.find(t=>t.id===id):{id:Catalog.id('t'),trade:'other',name:'新しいセット',items:[]},ms=Catalog.masters(),rows=(base?.items||[]).map(mid=>ms.find(m=>m.id===mid)).filter(Boolean);modal('<h2>セットを編集</h2><div class="field"><label>セット名</label><input id="cleanTName" value="'+esc(base?.name||'')+'"></div><div class="field"><label>工種</label><select id="cleanTTrade"><option value="sash">サッシ工事</option><option value="bath">ユニットバス工事</option><option value="concrete">コンクリ打設工事</option><option value="paint">塗装工事</option><option value="water">水回り工事</option><option value="other">その他</option></select></div><div id="cleanRows" class="edit-rows">'+rows.map(row).join('')+'</div><div class="modal-actions"><button class="btn" onclick="App.addCleanRow()">＋ 項目を追加</button><button class="btn primary" onclick="App.commitCleanTemplate(\\\''+base.id+'\\\')">保存</button></div>');document.querySelector('#cleanTTrade').value=base?.trade||'other'};
+App.editTemplate=function(id){const ts=Catalog.templates(),base=id?ts.find(t=>t.id===id):{id:Catalog.id('t'),trade:'other',name:'新しいセット',items:[]},ms=Catalog.masters(),rows=(base?.items||[]).map(mid=>ms.find(m=>m.id===mid)).filter(Boolean);modal('<h2>セットを編集</h2><div class="field"><label>セット名</label><input id="cleanTName" value="'+esc(base?.name||'')+'"></div><div class="field"><label>工種</label><select id="cleanTTrade"><option value="sash">サッシ工事</option><option value="bath">ユニットバス工事</option><option value="concrete">コンクリ打設工事</option><option value="paint">塗装工事</option><option value="water">水回り工事</option><option value="other">その他</option></select></div><div id="cleanRows" class="edit-rows">'+rows.map(row).join('')+'</div><div class="modal-actions"><button class="btn" onclick="App.addCleanRow()">＋ 項目を追加</button><button class="btn primary" onclick="App.commitCleanTemplate(\''+base.id+'\')">保存</button></div>');document.querySelector('#cleanTTrade').value=base?.trade||'other'};
 App.newTemplate=()=>App.editTemplate(null);App.addCleanRow=()=>document.querySelector('#cleanRows').insertAdjacentHTML('beforeend',row({qty:1,unit:'式',price:0,group:''}));App.moveCleanRow=function(btn,d){const r=btn.closest('[data-clean-row]'),t=d<0?r.previousElementSibling:r.nextElementSibling;if(t)r.parentElement.insertBefore(d<0?r:t,d<0?t:r)};
 App.commitCleanTemplate=async function(id){const trade=document.querySelector('#cleanTTrade').value,ms=Catalog.masters(),positions=new Map(ms.map((m,i)=>[m.id,i]));const rows=[...document.querySelectorAll('[data-clean-row]')].map(r=>{let itemId=r.dataset.masterId;if(!itemId||!positions.has(itemId)){itemId=Catalog.id('m');positions.set(itemId,ms.length);ms.push({id:itemId})}const next={id:itemId,trade,name:r.querySelector('.name').value.trim(),desc:r.querySelector('.desc').value.trim(),qty:+r.querySelector('.qty').value||0,unit:r.querySelector('.unit').value,price:+r.querySelector('.price').value||0,group:r.querySelector('.group').value};ms[positions.get(itemId)]=next;return next}).filter(x=>x.name);if(!rows.length)return alert('項目を1つ以上入力してください');Catalog.saveMasters(ms);const ts=Catalog.templates(),t={id,name:document.querySelector('#cleanTName').value.trim()||'名称未設定',trade,items:rows.map(x=>x.id)},i=ts.findIndex(x=>x.id===id);if(i>=0)ts[i]=t;else ts.push(t);Catalog.saveTemplates(ts);try{await Sync.push()}catch(_){}App.openWarehouse()};
 const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.querySelector('#mName');if(!f||!f.value.trim())return oldCommit();oldCommit();setTimeout(()=>App.openWarehouse(),0)};
@@ -145,4 +145,85 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   };
 })();
 </script>
+
+<script>
+/* セットを起動画面の工事として登録する。既存5工種は変更しない。 */
+(function(){
+  const startTrade=id=>'start:'+id;
+  function templateById(id){return Catalog.templates().find(t=>t.id===id)}
+  function renderStartTiles(){
+    const grid=document.querySelector('#tradeGrid');
+    if(!grid)return;
+    const starts=Catalog.templates().filter(t=>t.startTile);
+    const sig=starts.map(t=>t.id+'|'+t.name+'|'+t.items.length).join('~');
+    if(grid.dataset.startSetSignature===sig)return;
+    grid.querySelectorAll('.custom-start-set').forEach(node=>node.remove());
+    starts.forEach(t=>{
+      const button=document.createElement('button');
+      button.className='trade custom-start-set';
+      button.type='button';
+      button.innerHTML='<span>'+String(t.name||'名称未設定').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</span><small>標準明細を一括追加</small>';
+      button.onclick=()=>App.chooseStartSet(t.id);
+      grid.appendChild(button);
+    });
+    grid.dataset.startSetSignature=sig;
+    const draft=Store.read('draft',{});
+    const current=Catalog.templates().find(t=>t.trade===draft.trade&&t.startTile);
+    if(current&&document.querySelector('#tradeTitle'))document.querySelector('#tradeTitle').textContent=current.name;
+  }
+  const grid=document.querySelector('#tradeGrid');
+  if(grid)new MutationObserver(()=>queueMicrotask(renderStartTiles)).observe(grid,{childList:true});
+  App.chooseStartSet=function(id){
+    const t=templateById(id);
+    if(!t)return;
+    App.chooseTrade(t.trade||startTrade(id));
+    const title=document.querySelector('#tradeTitle');
+    if(title)title.textContent=t.name;
+  };
+  const priorEdit=App.editTemplate;
+  App.editTemplate=function(id){
+    priorEdit(id);
+    const current=id?templateById(id):null;
+    const trade=document.querySelector('#cleanTTrade');
+    if(!trade)return;
+    const checked=!!current?.startTile;
+    const token=startTrade(id||'new');
+    if(checked&&!trade.querySelector('option[value="'+token+'"]')){
+      const option=document.createElement('option');
+      option.value=token;option.textContent='スタート画面用';
+      trade.appendChild(option);trade.value=token;
+    }
+    const field=document.createElement('label');
+    field.className='start-set-toggle';
+    field.innerHTML='<input id="cleanStartSet" type="checkbox" '+(checked?'checked':'')+'> スタート画面の工事として表示';
+    trade.closest('.field').insertAdjacentElement('afterend',field);
+  };
+  const priorCommit=App.commitCleanTemplate;
+  App.commitCleanTemplate=async function(id){
+    const start=!!document.querySelector('#cleanStartSet')?.checked;
+    const trade=document.querySelector('#cleanTTrade');
+    const token=startTrade(id);
+    if(start&&trade){
+      if(!trade.querySelector('option[value="'+token+'"]')){
+        const option=document.createElement('option');option.value=token;option.textContent='スタート画面用';trade.appendChild(option);
+      }
+      trade.value=token;
+    }else if(trade&&trade.value.startsWith('start:')){
+      trade.value='other';
+    }
+    await priorCommit(id);
+    const templates=Catalog.templates(),index=templates.findIndex(t=>t.id===id);
+    if(index>=0){
+      templates[index]={...templates[index],startTile:start};
+      Catalog.saveTemplates(templates);
+      try{await Sync.push()}catch(_){}
+    }
+    renderStartTiles();
+  };
+  renderStartTiles();
+})();
+</script>
+<style>
+.start-set-toggle{display:flex;align-items:center;gap:8px;margin:10px 0;font-weight:700;cursor:pointer}.start-set-toggle input{width:20px;height:20px}.custom-start-set{border-color:#2563eb!important;background:#eff6ff!important}
+</style>
 </body></html>
