@@ -158,11 +158,12 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     if(!grid)return;
   const starts=Catalog.templates().filter(t=>t.startTile||String(t.trade||'').startsWith('start:'));
     const sig=starts.map(t=>t.id+'|'+t.name+'|'+t.items.length).join('~');
-    if(grid.dataset.startSetSignature===sig)return;
+    if(grid.dataset.startSetSignature===sig&&starts.every(t=>grid.querySelector('[data-start-template="'+t.id+'"]')))return;
     grid.querySelectorAll('.custom-start-set').forEach(node=>node.remove());
     starts.forEach(t=>{
       const button=document.createElement('button');
       button.className='trade custom-start-set';
+      button.dataset.startTemplate=t.id;
       button.type='button';
       button.innerHTML='<span>'+String(t.name||'名称未設定').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</span><small>標準明細を一括追加</small>';
       button.onclick=()=>App.chooseStartSet(t.id);
