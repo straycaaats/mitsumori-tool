@@ -11,7 +11,7 @@
 <main class="shell">
  <section id="start" class="panel start"><h1>工事を選ぶ</h1><div id="tradeGrid" class="trade-grid"></div></section>
  <section id="work" class="hide"><div class="workspace"><div>
-  <section class="panel"><div class="headrow"><h2 id="tradeTitle">見積</h2><button class="btn sm" onclick="App.openCustomer()">顧客を選ぶ・入力</button></div><div class="customer"><div class="field"><label>顧客名</label><input data-field="name"></div><div class="field"><label>電話番号</label><input data-field="phone" type="tel"></div><div class="field"><label>工事場所</label><input data-field="address"></div><div class="field"><label>会社名</label><select data-field="company"><option value="">選択なし</option><option value="中央技建">中央技建</option><option value="日建">日建</option><option value="エコロジー">エコロジー</option></select></div><div class="field"><label>担当1</label><select data-field="manager"><option value="">選択なし</option><option value="荒川">荒川</option><option value="上原">上原</option><option value="股部">股部</option></select></div></div></section>
+ <section class="panel"><div class="headrow"><div class="construction-field"><label id="tradeTitle">工事名</label><input data-field="constructionName" aria-label="工事名" placeholder="工事名"></div><button class="btn sm" onclick="App.openCustomer()">顧客を選ぶ・入力</button></div><div class="customer"><div class="field"><label>顧客名</label><input data-field="name"></div><div class="field"><label>電話番号</label><input data-field="phone" type="tel"></div><div class="field"><label>工事場所</label><input data-field="address"></div><div class="field"><label>工事期間</label><input data-field="period" placeholder="例：令和8年9月1日〜9月3日"></div><div class="field"><label>会社名</label><select data-field="company"><option value="">選択なし</option><option value="中央技建">中央技建</option><option value="日建">日建</option><option value="エコロジー">エコロジー</option></select></div><div class="field"><label>担当1</label><select data-field="manager"><option value="">選択なし</option><option value="荒川">荒川</option><option value="上原">上原</option><option value="股部">股部</option></select></div></div></section>
   <section id="quantityPanel" class="panel hide"><div class="headrow"><h2>一括数量</h2></div><div id="quantityBoxes" class="quantity"></div></section>
   <section class="panel"><div class="headrow"><h2>明細</h2><button class="btn sm" onclick="App.openWarehouse()">＋ 倉庫から追加</button></div><div id="empty" class="empty">明細がありません</div><table class="table"><thead><tr><th>品名</th><th>概要</th><th>数量</th><th>単位</th><th>単価</th><th>金額</th><th></th></tr></thead><tbody id="rows"></tbody></table><div id="cards" class="card-list"></div></section>
  </div><aside class="side"><section class="panel summary"><div class="field"><label>諸経費（円）</label><input id="expense" type="number"></div><div class="field"><label>備考</label><textarea id="note" rows="4"></textarea></div><div class="sumrow"><span>工事費</span><b id="workSum">¥0</b></div><div class="sumrow"><span>小計</span><b id="subSum">¥0</b></div><div class="sumrow"><span>消費税</span><b id="taxSum">¥0</b></div><div class="sumrow total"><span>合計</span><b id="grandSum">¥0</b></div><div class="side-actions"><button class="btn" onclick="App.openWarehouse()">＋ 工事・項目</button><button class="btn primary" onclick="App.saveCase()">保存</button><button class="btn" onclick="App.print()">PDF・印刷</button></div></section></aside></div></section>
@@ -327,6 +327,99 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     localTemplates.filter(template=>!remoteIds.has(template.id)).forEach(template=>{merged.push(template);restored=true});
     if(restored){Catalog.saveTemplates(merged);Sync.push().catch(()=>{});}
     return data;
+  };
+})();
+</script>
+<style>
+/* 工事名は明細の前で直接変更でき、スマホでも横に潰れない。 */
+.construction-field{display:flex;align-items:center;gap:7px;min-width:0}.construction-field label{font-size:0;font-weight:800;white-space:nowrap}.construction-field label:after{content:'工事名';font-size:16px}.construction-field input{min-width:180px;width:min(380px,44vw);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-weight:800;color:var(--navy);background:#fff}@media(max-width:760px){.construction-field{flex:1}.construction-field input{width:100%;min-width:0;font-size:14px;padding:7px}.construction-field label:after{font-size:14px}}
+</style>
+<script>
+/* 見積固有の工事名・期間を、既存の自動保存に載せる。 */
+(function(){
+  const fields=['constructionName','period'];
+  const tradeName={sash:'サッシ工事',bath:'ユニットバス工事',concrete:'コンクリ打設工事',paint:'塗装工事',water:'水回り工事'};
+  const templateName=d=>Catalog.templates().find(t=>t.trade===d?.trade)?.name||tradeName[d?.trade]||'';
+  const storeWrite=Store.write;
+  Store.write=function(key,value){
+    if(key===Store.keys.draft&&value&&typeof value==='object'&&value.trade){
+      const previous=Store.read(Store.keys.draft,null)?.customer||{};
+      value.customer=value.customer||{};
+      fields.forEach(field=>{if((value.customer[field]===undefined||value.customer[field]==='')&&previous[field])value.customer[field]=previous[field]});
+    }
+    return storeWrite(key,value);
+  };
+  function setField(field,value){
+    const input=document.querySelector('[data-field="'+field+'"]');
+    if(!input)return;
+    input.value=value||'';
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+  function prepareDraft(d){
+    if(!d||!d.trade)return;
+    d.customer=d.customer||{};
+    if(!d.customer.constructionName)d.customer.constructionName=templateName(d);
+  }
+  const boot=App.start;
+  App.start=function(){
+    const draft=Store.read(Store.keys.draft,null);
+    prepareDraft(draft);
+    if(draft)Store.write(Store.keys.draft,draft);
+    return boot();
+  };
+  const chooseTrade=App.chooseTrade;
+  App.chooseTrade=function(trade){
+    chooseTrade(trade);
+    const draft=Store.read(Store.keys.draft,null);
+    if(!draft)return;
+    draft.customer=draft.customer||{};
+    draft.customer.constructionName=templateName(draft);
+    Store.write(Store.keys.draft,draft);
+    setField('constructionName',draft.customer.constructionName);
+  };
+  const loadCase=App.loadCase;
+  App.loadCase=function(index){
+    const cases=Store.read(Store.keys.cases,[]);
+    if(cases[index]){prepareDraft(cases[index]);Store.write(Store.keys.cases,cases)}
+    loadCase(index);
+  };
+  const saveCustomer=App.saveCustomer;
+  App.saveCustomer=function(){
+    const before=Store.read(Store.keys.draft,null)?.customer||{};
+    saveCustomer();
+    requestAnimationFrame(()=>fields.forEach(field=>setField(field,Store.read(Store.keys.draft,null)?.customer?.[field]||before[field]||'')));
+  };
+  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const companyInfo={
+    '中央技建':{name:'(株)中央技建',address:'〒134-0091東京都江戸川区船堀1－6－20',tel:'TEL03‐6808‐9681'},
+    '日建':{name:'日建(株)',address:'〒134-0015 東京都江戸川区西瑞江4－12－3',tel:'TEL03－3656-9311'},
+    'エコロジー':{name:'エコロジー環境設備(株)',address:'〒194-0001東京都町田市つくし野1-22-1',tel:'TEL042-850-7126'}
+  };
+  const legacyPrint=App.print;
+  App.print=function(){
+    const realOpen=window.open;
+    window.open=function(){
+      const win=realOpen.apply(window,arguments);
+      if(!win||!win.document)return win;
+      const write=win.document.write.bind(win.document);
+      win.document.write=function(html){
+        const estimate=Store.read(Store.keys.draft,{customer:{}}),customer=estimate.customer||{};
+        const construction=customer.constructionName||templateName(estimate)||estimate.caseName||'各種工事';
+        const company=companyInfo[customer.company]||{name:customer.company||'',address:'',tel:''};
+        const coBlock='<div class="co-name">'+esc(company.name)+'</div>'+(company.address?'<div class="co-address">'+esc(company.address)+'</div><div class="co-address">'+esc(company.tel)+'</div>':'');
+        html=String(html)
+          .replace(/　御中/g,'　様')
+          .replace(/<div class="co-name">[\s\S]*?<\/div>/,coBlock)
+          .replace('.co-name{font-size:15.75pt;font-weight:700}', '.co-name{font-size:15.75pt;font-weight:700}.co-address{font-size:9.75pt;font-weight:400;line-height:1.45;white-space:nowrap}')
+          .replace(/(<td colspan="3" class="koji-name-big">)[\s\S]*?(<\/td>)/,'$1'+esc(construction)+'$2')
+          .replace(/(<td class="lbl" style="width:14%">工事期間<\/td><td>)[\s\S]*?(<\/td>)/,'$1'+esc(customer.period||'')+'$2')
+          .replace(/(<td class="lbl">工事概要<\/td><td colspan="3">)[\s\S]*?(<\/td>)/,'$1'+esc(construction)+'$2')
+          .replace(/(<div style="font-size:12\.75pt">)[\s\S]*?(<\/div><\/div><table class="m-tbl">)/,'$1'+esc(customer.name||'')+'　様　／　'+esc(construction)+'$2');
+        return write(html);
+      };
+      return win;
+    };
+    try{return legacyPrint()}finally{window.open=realOpen}
   };
 })();
 </script>
