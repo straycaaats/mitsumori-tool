@@ -9,7 +9,7 @@
 </head><body>
 <header class="top"><span class="brand">見積ツール <small>CLEAN</small></span><button class="btn" onclick="App.openCases()">案件</button><button class="btn" onclick="App.openWarehouse()">倉庫</button><button class="btn" onclick="App.openSync()">同期</button><button class="btn" onclick="App.newEstimate()">新規</button><button class="btn primary" onclick="App.saveCase()">保存</button><button class="btn" onclick="App.print()">PDF</button></header>
 <main class="shell">
- <section id="start" class="panel start"><h1>工事を選ぶ</h1><div class="guarantee-choice"><span>10年間メンテナンス保証工事</span><label><input type="radio" name="guarantee" value="yes" checked> 入れる</label><label><input type="radio" name="guarantee" value="no"> 入れない</label></div><div id="tradeGrid" class="trade-grid"></div></section>
+ <section id="start" class="panel start"><h1>工事を選ぶ</h1><div id="tradeGrid" class="trade-grid"></div></section>
  <section id="work" class="hide"><div class="workspace"><div>
  <section class="panel"><div class="headrow"><div class="construction-field"><label id="tradeTitle">工事名</label><input data-field="constructionName" aria-label="工事名" placeholder="工事名"></div><button class="btn sm" onclick="App.openCustomer()">顧客を選ぶ・入力</button></div><div class="customer"><div class="field"><label>顧客名</label><input data-field="name"></div><div class="field"><label>電話番号</label><input data-field="phone" type="tel"></div><div class="field"><label>工事場所</label><input data-field="address"></div><div class="field"><label>工事期間</label><input data-field="period" placeholder="例：令和8年9月1日〜9月3日"></div><div class="field"><label>会社名</label><select data-field="company"><option value="">選択なし</option><option value="中央技建">中央技建</option><option value="日建">日建</option><option value="エコロジー">エコロジー</option></select></div><div class="field"><label>担当1</label><select data-field="manager"><option value="">選択なし</option><option value="荒川">荒川</option><option value="上原">上原</option><option value="股部">股部</option></select></div></div></section>
   <section id="quantityPanel" class="panel hide"><div class="headrow"><h2>一括数量</h2></div><div id="quantityBoxes" class="quantity"></div></section>
@@ -344,8 +344,10 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   Store.write=function(key,value){
     if(key===Store.keys.draft&&value&&typeof value==='object'&&value.trade){
       const previous=Store.read(Store.keys.draft,null)?.customer||{};
+      const previousDraft=Store.read(Store.keys.draft,null)||{};
       value.customer=value.customer||{};
       fields.forEach(field=>{if((value.customer[field]===undefined||value.customer[field]==='')&&previous[field])value.customer[field]=previous[field]});
+      if(value.guarantee===undefined&&previousDraft.guarantee!==undefined)value.guarantee=previousDraft.guarantee;
     }
     return storeWrite(key,value);
   };
@@ -361,8 +363,19 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     if(d.guarantee===undefined)d.guarantee=true;
     if(!d.customer.constructionName)d.customer.constructionName=templateName(d);
   }
+  function ensureGuaranteeChoice(){
+    if(document.querySelector('.guarantee-choice'))return;
+    const note=document.querySelector('#note');
+    if(!note)return;
+    note.closest('.field').insertAdjacentHTML('afterend','<div class="guarantee-choice"><span>10年間メンテナンス保証工事</span><label><input type="radio" name="guarantee" value="yes" checked> 入れる</label><label><input type="radio" name="guarantee" value="no"> 入れない</label></div>');
+    document.querySelectorAll('input[name="guarantee"]').forEach(input=>input.addEventListener('change',()=>{
+      const draft=Store.read(Store.keys.draft,null);
+      if(draft){draft.guarantee=input.value!=='no';Store.write(Store.keys.draft,draft)};
+    }));
+  }
   const boot=App.start;
   App.start=function(){
+    ensureGuaranteeChoice();
     const draft=Store.read(Store.keys.draft,null);
     prepareDraft(draft);
     if(draft)Store.write(Store.keys.draft,draft);
@@ -393,6 +406,14 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     newEstimate();
     const yes=document.querySelector('input[name="guarantee"][value="yes"]');
     if(yes)yes.checked=true;
+  };
+  const saveCase=App.saveCase;
+  App.saveCase=function(){
+    const draft=Store.read(Store.keys.draft,null);
+    saveCase();
+    if(!draft)return;
+    const cases=Store.read(Store.keys.cases,[]),saved=cases.find(x=>x.id===draft.id);
+    if(saved){saved.guarantee=draft.guarantee!==false;Store.write(Store.keys.cases,cases)};
   };
   const saveCustomer=App.saveCustomer;
   App.saveCustomer=function(){
