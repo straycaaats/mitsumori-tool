@@ -458,5 +458,52 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   };
 })();
 </script>
+<style>
+.modal.warehouse-modal{width:100vw;max-width:none;height:100dvh;max-height:none;border-radius:0;padding:14px;overflow:hidden;display:flex;flex-direction:column}.warehouse-full-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}.warehouse-full-head h2{margin:0 auto 0 0}.warehouse-full-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;min-height:0;flex:1}.warehouse-pane{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:12px;background:#f8fbff;padding:10px}.warehouse-pane-head{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-weight:900}.warehouse-pane-head select{min-width:0;flex:1;padding:7px;border:1px solid var(--line);border-radius:7px;background:#fff}.warehouse-scroll{min-height:0;overflow:auto;display:grid;gap:7px;padding-right:2px}.warehouse-set{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:stretch;border:2px dashed transparent;border-radius:9px}.warehouse-set.drag-over{border-color:var(--blue);background:#eaf3ff}.warehouse-set-add,.warehouse-master-add{min-width:0;text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 10px}.warehouse-set-add strong,.warehouse-master-add strong{display:block}.warehouse-set-add small,.warehouse-master-add small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.warehouse-actions{display:flex;gap:5px;align-items:center}.warehouse-delete{width:40px;min-width:40px;border:1px solid #fecaca;border-radius:8px;background:#fff7f7;color:var(--danger);font-size:22px}.warehouse-master{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:stretch}.warehouse-master-add{cursor:grab}.warehouse-master-add:active{cursor:grabbing}.warehouse-target-note{font-size:11px;color:var(--muted);margin-left:auto}@media(max-width:760px){.modal.warehouse-modal{padding:10px}.warehouse-full-body{gap:8px;grid-template-columns:1fr 1fr}.warehouse-pane{padding:7px}.warehouse-pane-head{font-size:14px;flex-wrap:wrap}.warehouse-pane-head .btn{padding:6px 7px;font-size:11px}.warehouse-target-note{width:100%;margin:0}.warehouse-set{grid-template-columns:minmax(0,1fr) auto}.warehouse-set-add{font-size:13px;padding:8px}.warehouse-set-add small{font-size:10px}.warehouse-actions{grid-column:2;grid-row:1;flex-direction:column}.warehouse-actions .btn{padding:5px;font-size:11px}.warehouse-delete{width:33px;min-width:33px;height:31px;font-size:18px}.warehouse-master{grid-template-columns:minmax(0,1fr) auto}.warehouse-master-add{font-size:13px;padding:8px}.warehouse-master .warehouse-delete{grid-column:2}.warehouse-master .btn.sm{padding:5px;font-size:11px}}
+</style>
+<script>
+/* Full-screen warehouse: masters stay reusable and can be dropped into any set. */
+(function(){
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let selectedTemplateId='';
+  const baseClose=App.close,baseEditTemplate=App.editTemplate,baseOpenMaster=App.openMaster;
+  const sync=()=>Sync.push().catch(()=>{});
+  function setTarget(){const ts=Catalog.templates();if(!ts.some(t=>t.id===selectedTemplateId))selectedTemplateId=ts[0]?.id||''}
+  function refresh(){App.openWarehouse()}
+  App.close=function(){document.querySelector('#modal')?.classList.remove('warehouse-modal');baseClose()};
+  App.openWarehouse=function(){
+    const ts=Catalog.templates(),ms=Catalog.masters();setTarget();
+    const modal=document.querySelector('#modal');modal.className='modal warehouse-modal';
+    const options=ts.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===selectedTemplateId?' selected':'')+'>'+esc(t.name)+'</option>').join('');
+    const sets=ts.map(t=>'<div class="warehouse-set" ondragover="App.warehouseAllowDrop(event)" ondragleave="this.classList.remove(\'drag-over\')" ondrop="App.warehouseDrop(event,\''+esc(t.id)+'\')"><button class="warehouse-set-add" onclick="App.addTemplate(\''+esc(t.id)+'\')"><strong>'+esc(t.name)+'</strong><small>'+(t.items||[]).length+'項目 · タップで見積へ追加</small></button><div class="warehouse-actions"><button class="btn sm" onclick="App.warehouseEditSet(\''+esc(t.id)+'\')">編集</button><button class="warehouse-delete" title="セットを削除" onclick="App.warehouseDeleteSet(\''+esc(t.id)+'\')">×</button></div></div>').join('')||'<div class="empty">セットがありません</div>';
+    const masters=ms.map(m=>'<div class="warehouse-master"><button class="warehouse-master-add" draggable="true" ondragstart="App.warehouseDragStart(event,\''+esc(m.id)+'\')" onclick="App.addMasterToEstimate(\''+esc(m.id)+'\')"><strong>'+esc(m.name)+'</strong><small>'+esc(m.unit||'式')+' · ¥'+Number(m.price||0).toLocaleString()+' · タップで見積へ追加</small></button><button class="btn sm" title="選択中セットへ追加" onclick="App.warehouseAddToSelected(\''+esc(m.id)+'\')">セット＋</button><button class="warehouse-delete" title="単品を削除" onclick="App.warehouseDeleteMaster(\''+esc(m.id)+'\')">×</button></div>').join('')||'<div class="empty">単品がありません</div>';
+    modal.innerHTML='<div class="warehouse-full-head"><h2>倉庫</h2><button class="btn sm" onclick="App.newTemplate()">＋ セット</button><button class="btn sm" onclick="App.openMaster()">＋ 単品</button><button class="btn" onclick="App.close()">閉じる</button></div><div class="warehouse-full-body"><section class="warehouse-pane"><div class="warehouse-pane-head"><span>単品</span><select onchange="App.warehouseSelect(this.value)">'+options+'</select><span class="warehouse-target-note">ドラッグ先</span></div><div class="warehouse-scroll">'+masters+'</div></section><section class="warehouse-pane"><div class="warehouse-pane-head"><span>セット</span><span class="warehouse-target-note">単品をドラッグして追加</span></div><div class="warehouse-scroll">'+sets+'</div></section></div>';
+    document.querySelector('#modalBg').classList.add('open');
+  };
+  App.warehouseSelect=id=>{selectedTemplateId=id};
+  App.warehouseDragStart=(event,id)=>{event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('text/plain',id)};
+  App.warehouseAllowDrop=event=>{event.preventDefault();event.currentTarget.classList.add('drag-over')};
+  App.warehouseDrop=(event,templateId)=>{event.preventDefault();event.currentTarget.classList.remove('drag-over');App.warehouseAddToSet(event.dataTransfer.getData('text/plain'),templateId)};
+  App.warehouseAddToSelected=id=>App.warehouseAddToSet(id,selectedTemplateId);
+  App.warehouseAddToSet=function(masterId,templateId){
+    const ts=Catalog.templates(),template=ts.find(t=>t.id===templateId),master=Catalog.masters().find(m=>m.id===masterId);
+    if(!template||!master)return;
+    template.items=template.items||[];
+    if(template.items.includes(masterId))return;
+    template.items.push(masterId);Catalog.saveTemplates(ts);sync();refresh();
+  };
+  App.warehouseEditSet=id=>{document.querySelector('#modal')?.classList.remove('warehouse-modal');baseEditTemplate(id)};
+  App.openMaster=function(){document.querySelector('#modal')?.classList.remove('warehouse-modal');baseOpenMaster()};
+  App.warehouseDeleteSet=function(id){
+    const t=Catalog.templates().find(x=>x.id===id);if(!t||!confirm('「'+t.name+'」セットを削除しますか？'))return;
+    Catalog.saveTemplates(Catalog.templates().filter(x=>x.id!==id));sync();refresh();
+  };
+  App.warehouseDeleteMaster=function(id){
+    const m=Catalog.masters().find(x=>x.id===id);if(!m||!confirm('「'+m.name+'」を削除しますか？\n使われているセットからも外れます。'))return;
+    Catalog.saveMasters(Catalog.masters().filter(x=>x.id!==id));
+    Catalog.saveTemplates(Catalog.templates().map(t=>({...t,items:(t.items||[]).filter(mid=>mid!==id)})));sync();refresh();
+  };
+})();
+</script>
 <script>App.start();</script>
 </body></html>
