@@ -469,7 +469,11 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   const baseClose=App.close,baseEditTemplate=App.editTemplate,baseOpenMaster=App.openMaster;
   const sync=()=>Sync.push().catch(()=>{});
   function setTarget(){const ts=Catalog.templates();if(!ts.some(t=>t.id===selectedTemplateId))selectedTemplateId=ts[0]?.id||''}
-  function refresh(){App.openWarehouse()}
+  function refresh(){
+    const scrolls=[...document.querySelectorAll('.warehouse-scroll')].map(node=>node.scrollTop);
+    App.openWarehouse();
+    document.querySelectorAll('.warehouse-scroll').forEach((node,index)=>{node.scrollTop=scrolls[index]||0});
+  }
   App.close=function(){document.querySelector('#modal')?.classList.remove('warehouse-modal');baseClose()};
   App.openWarehouse=function(){
     const ts=Catalog.templates(),ms=Catalog.masters();setTarget();
@@ -495,11 +499,11 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   App.warehouseEditSet=id=>{document.querySelector('#modal')?.classList.remove('warehouse-modal');baseEditTemplate(id)};
   App.openMaster=function(){document.querySelector('#modal')?.classList.remove('warehouse-modal');baseOpenMaster()};
   App.warehouseDeleteSet=function(id){
-    const t=Catalog.templates().find(x=>x.id===id);if(!t||!confirm('「'+t.name+'」セットを削除しますか？'))return;
+    const t=Catalog.templates().find(x=>x.id===id);if(!t)return;
     Catalog.saveTemplates(Catalog.templates().filter(x=>x.id!==id));sync();refresh();
   };
   App.warehouseDeleteMaster=function(id){
-    const m=Catalog.masters().find(x=>x.id===id);if(!m||!confirm('「'+m.name+'」を削除しますか？\n使われているセットからも外れます。'))return;
+    const m=Catalog.masters().find(x=>x.id===id);if(!m)return;
     Catalog.saveMasters(Catalog.masters().filter(x=>x.id!==id));
     Catalog.saveTemplates(Catalog.templates().map(t=>({...t,items:(t.items||[]).filter(mid=>mid!==id)})));sync();refresh();
   };
