@@ -5,11 +5,11 @@
 <title>見積もり作成ツール CLEAN</title>
 <style>
 :root{--navy:#13233b;--blue:#1769d1;--line:#dbe3ee;--muted:#637186;--bg:#f3f6fa;--danger:#c62828}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#172033;font:14px/1.35 -apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.top{height:56px;background:var(--navy);color:#fff;display:flex;align-items:center;gap:9px;padding:8px max(12px,calc((100% - 1180px)/2));position:sticky;top:0;z-index:20}.brand{font-size:16px;font-weight:900;margin-right:auto}.btn{border:1px solid #cbd5e1;background:#fff;color:#172033;border-radius:8px;padding:8px 11px;font-weight:800}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.danger{color:var(--danger);border-color:#fecaca;background:#fff7f7}.btn.sm{padding:5px 7px;font-size:12px}.shell{max-width:1180px;margin:auto;padding:14px}.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}.start{max-width:760px;margin:30px auto}.start h1{font-size:21px;margin:0 0 12px}.trade-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.trade{min-height:88px;text-align:left;border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px;font-weight:900;color:var(--navy)}.trade:active{background:#eaf3ff;border-color:var(--blue)}.trade small{display:block;font-weight:500;color:var(--muted);margin-top:4px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px}.headrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:10px}.headrow h2{font-size:16px;margin:0}.customer{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.field label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin:0 0 3px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px;background:#fff}.quantity{display:flex;gap:7px;flex-wrap:wrap}.quantity .field{min-width:150px;flex:1}.qbox{position:relative;overflow:hidden}.qbox b{position:absolute;right:10px;bottom:-15px;font-size:60px;color:#1769d10d;pointer-events:none}.table{width:100%;border-collapse:collapse}.table th{font-size:11px;text-align:left;color:var(--muted);padding:5px;border-bottom:1px solid var(--line)}.table td{padding:5px;border-bottom:1px solid #edf1f5}.table input,.table select{width:100%;border:1px solid var(--line);border-radius:5px;padding:5px}.money{text-align:right;font-weight:800;white-space:nowrap}.card-list{display:none}.item-card{border:1px solid var(--line);border-radius:7px;margin-bottom:3px;overflow:hidden;background:#fff}.item-line{min-height:36px;display:grid;grid-template-columns:minmax(0,1fr) 47px 32px 67px 78px 28px;align-items:center;gap:3px;padding:3px 6px}.item-name{font-weight:850;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item-line input{width:100%;border:0;background:transparent;text-align:right;padding:3px;min-width:0}.item-line .unit{text-align:center;font-size:11px}.icon{border:0;background:transparent;color:var(--danger);font-size:19px;padding:2px}.detail{display:none;border-top:1px solid var(--line);padding:8px;background:#fafcff}.item-card.open .detail{display:grid;grid-template-columns:1fr 1fr;gap:7px}.detail .wide{grid-column:1/-1}.summary{display:grid;gap:7px;position:sticky;top:68px}.sumrow{display:flex;justify-content:space-between;border-bottom:1px solid #e7edf4;padding:7px 0}.sumrow.total{font-size:20px;color:var(--blue);border:0}.side-actions{display:grid;gap:7px}.empty{color:var(--muted);padding:18px;text-align:center}.modal-bg{display:none;position:fixed;z-index:100;inset:0;background:#07111a88;padding:14px;align-items:flex-end;justify-content:center}.modal-bg.open{display:flex}.modal{background:#fff;width:min(760px,100%);max-height:90vh;overflow:auto;border-radius:14px;padding:14px}.modal h2{font-size:17px;margin:0 0 10px}.modal-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:12px}.warehouse-card{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px}.warehouse-card strong{display:block}.warehouse-card small{color:var(--muted)}.edit-rows{display:grid;gap:5px}.edit-row{display:grid;grid-template-columns:1.4fr 1fr 55px 55px 70px 85px 26px;gap:4px;align-items:center}.edit-row input,.edit-row select{min-width:0;width:100%;border:1px solid var(--line);border-radius:5px;padding:6px}.notice{font-size:12px;color:var(--muted)}.hide{display:none!important}@media(max-width:760px){body{font-size:13px}.top{height:51px;padding:6px 8px}.brand{font-size:14px}.top .btn{padding:7px 8px;font-size:12px}.shell{padding:7px}.panel{padding:10px;margin-bottom:7px;border-radius:8px}.trade-grid{grid-template-columns:1fr 1fr;gap:6px}.trade{min-height:65px;padding:9px;font-size:13px}.trade small{font-size:10px;margin-top:2px}.workspace{display:block}.side{margin-top:7px}.customer{grid-template-columns:1fr 1fr}.customer .field:first-child{grid-column:1/-1}.table{display:none}.card-list{display:block}.summary{position:static}.item-card.open .detail{display:grid}.modal-bg{padding:0;align-items:flex-end}.modal{border-radius:14px 14px 0 0;max-height:92vh}.edit-row{grid-template-columns:1fr 55px 48px 70px 25px}.edit-row .desc,.edit-row .group{display:none}.hide-mobile{display:none}.headrow{margin-bottom:7px}.quantity .field{min-width:calc(50% - 4px)}.side-actions{grid-template-columns:1fr 1fr}.side-actions .btn:last-child{grid-column:1/-1}}
-</style>
+</style><style>.guarantee-choice{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#f8fbff;font-weight:800}.guarantee-choice span{color:var(--navy)}.guarantee-choice label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}.guarantee-choice input{accent-color:var(--blue)}</style>
 </head><body>
 <header class="top"><span class="brand">見積ツール <small>CLEAN</small></span><button class="btn" onclick="App.openCases()">案件</button><button class="btn" onclick="App.openWarehouse()">倉庫</button><button class="btn" onclick="App.openSync()">同期</button><button class="btn" onclick="App.newEstimate()">新規</button><button class="btn primary" onclick="App.saveCase()">保存</button><button class="btn" onclick="App.print()">PDF</button></header>
 <main class="shell">
- <section id="start" class="panel start"><h1>工事を選ぶ</h1><div id="tradeGrid" class="trade-grid"></div></section>
+ <section id="start" class="panel start"><h1>工事を選ぶ</h1><div class="guarantee-choice"><span>10年間メンテナンス保証工事</span><label><input type="radio" name="guarantee" value="yes" checked> 入れる</label><label><input type="radio" name="guarantee" value="no"> 入れない</label></div><div id="tradeGrid" class="trade-grid"></div></section>
  <section id="work" class="hide"><div class="workspace"><div>
  <section class="panel"><div class="headrow"><div class="construction-field"><label id="tradeTitle">工事名</label><input data-field="constructionName" aria-label="工事名" placeholder="工事名"></div><button class="btn sm" onclick="App.openCustomer()">顧客を選ぶ・入力</button></div><div class="customer"><div class="field"><label>顧客名</label><input data-field="name"></div><div class="field"><label>電話番号</label><input data-field="phone" type="tel"></div><div class="field"><label>工事場所</label><input data-field="address"></div><div class="field"><label>工事期間</label><input data-field="period" placeholder="例：令和8年9月1日〜9月3日"></div><div class="field"><label>会社名</label><select data-field="company"><option value="">選択なし</option><option value="中央技建">中央技建</option><option value="日建">日建</option><option value="エコロジー">エコロジー</option></select></div><div class="field"><label>担当1</label><select data-field="manager"><option value="">選択なし</option><option value="荒川">荒川</option><option value="上原">上原</option><option value="股部">股部</option></select></div></div></section>
   <section id="quantityPanel" class="panel hide"><div class="headrow"><h2>一括数量</h2></div><div id="quantityBoxes" class="quantity"></div></section>
@@ -132,7 +132,7 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     const construction=tradeNames[estimate.trade]||estimate.caseName||'各種工事';
     const rows=(estimate.items||[]).map(item=>'<tr><td>'+esc(item.name)+'</td><td>'+esc(item.desc||'')+'</td><td class="r">'+esc(item.qty)+'</td><td class="c">'+esc(item.unit||'')+'</td><td class="r">'+yen(item.price)+'</td><td class="r">'+yen((+item.qty||0)*(+item.price||0))+'</td></tr>').join('');
     const detailRows=(estimate.items||[]).length+1,targetRows=Math.max(12,detailRows),density=Math.min(1,12/detailRows),tableFont=(12.75*density).toFixed(2),headerFont=(11.25*density).toFixed(2),rowHeight=Math.max(10,Math.round(26*density)),cellPad=Math.max(1,Math.round(2*density)),grandFont=(15.75*density).toFixed(2),fitCss='.meisai .m-tbl{font-size:'+tableFont+'pt}.meisai .m-tbl th{font-size:'+headerFont+'pt;padding:'+cellPad+'px 3px}.meisai .m-tbl td,.meisai .m-tbl .blank td{height:'+rowHeight+'px;padding:'+cellPad+'px 4px}.meisai .grand-r td{font-size:'+grandFont+'pt}';
-    const blanks=Array.from({length:Math.max(0,targetRows-detailRows)},()=>'<tr class="blank"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+    const blanks=Array.from({length:Math.max(0,targetRows-detailRows)},()=>'<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
     const html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>御見積書</title><style>'+
       '@page{size:A4 landscape;margin:8mm 10mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Noto Sans JP","Yu Gothic",sans-serif;color:#000;background:#fff;font-size:15pt}.page{width:100%;min-height:190mm;page-break-after:always}.page:last-of-type{page-break-after:auto}.print-btn{display:flex;justify-content:center;gap:12px;padding:12px;background:#f0ede6;border-bottom:3px solid #8b7355}.print-btn button{padding:9px 20px;font-size:15px;font-weight:900;border:3px solid #1a1a2e;background:#fff}.print-btn .go{background:#1a1a2e;color:#fff}@media print{.print-btn{display:none!important}.page{min-height:0}}'+
       '.hyoshi{padding:4mm 7mm}.h-title-box{border:4px solid #000;text-align:center;padding:5px 0;margin-bottom:8px}.h-title{font-size:27pt;font-weight:700;letter-spacing:.3em}.h-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}.client-name{font-size:22.5pt;font-weight:700;border-bottom:4px solid #000;padding-bottom:2px;min-width:180px;display:inline-block}.co-block{text-align:right;font-size:12.75pt;line-height:1.8}.co-name{font-size:15.75pt;font-weight:700}.kingaku-wrap{display:inline-block;padding:5px 0;margin:6px 0;min-width:280px}.k-label{font-size:17.55pt}.k-num{font-size:19.5pt;border-bottom:4px solid #000;padding-bottom:2px;min-width:260px;display:inline-block}.k-sub{font-size:11.25pt;color:#555}.hosho-box{text-align:center;font-size:20.25pt;font-weight:700;margin-top:10px;padding:6px 0;letter-spacing:.05em}.koji-tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.75pt}.koji-tbl td{padding:4px 6px;border:2px solid #555}.koji-tbl .lbl{background:#e7f2ff;width:18%;font-weight:700;white-space:nowrap}.koji-name-big{font-size:18pt;font-weight:700}'+
@@ -358,6 +358,7 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   function prepareDraft(d){
     if(!d||!d.trade)return;
     d.customer=d.customer||{};
+    if(d.guarantee===undefined)d.guarantee=true;
     if(!d.customer.constructionName)d.customer.constructionName=templateName(d);
   }
   const boot=App.start;
@@ -365,7 +366,10 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     const draft=Store.read(Store.keys.draft,null);
     prepareDraft(draft);
     if(draft)Store.write(Store.keys.draft,draft);
-    return boot();
+    const result=boot();
+    const guarantee=document.querySelector('input[name="guarantee"][value="'+((draft&&draft.guarantee===false)?'no':'yes')+'"]');
+    if(guarantee)guarantee.checked=true;
+    return result;
   };
   const chooseTrade=App.chooseTrade;
   App.chooseTrade=function(trade){
@@ -373,6 +377,7 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     const draft=Store.read(Store.keys.draft,null);
     if(!draft)return;
     draft.customer=draft.customer||{};
+    draft.guarantee=document.querySelector('input[name="guarantee"]:checked')?.value!=='no';
     draft.customer.constructionName=templateName(draft);
     Store.write(Store.keys.draft,draft);
     setField('constructionName',draft.customer.constructionName);
@@ -382,6 +387,12 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     const cases=Store.read(Store.keys.cases,[]);
     if(cases[index]){prepareDraft(cases[index]);Store.write(Store.keys.cases,cases)}
     loadCase(index);
+  };
+  const newEstimate=App.newEstimate;
+  App.newEstimate=function(){
+    newEstimate();
+    const yes=document.querySelector('input[name="guarantee"][value="yes"]');
+    if(yes)yes.checked=true;
   };
   const saveCustomer=App.saveCustomer;
   App.saveCustomer=function(){
@@ -415,6 +426,7 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
           .replace(/(<td class="lbl" style="width:14%">工事期間<\/td><td>)[\s\S]*?(<\/td>)/,'$1'+esc(customer.period||'')+'$2')
           .replace(/(<td class="lbl">工事概要<\/td><td colspan="3">)[\s\S]*?(<\/td>)/,'$1'+esc(construction)+'$2')
           .replace(/(<div style="font-size:12\.75pt">)[\s\S]*?(<\/div><\/div><table class="m-tbl">)/,'$1'+esc(customer.name||'')+'　様　／　'+esc(construction)+'$2');
+        if(estimate.guarantee===false)html=html.replace(/<div class="hosho-box">[\s\S]*?<\/div>/,'');
         return write(html);
       };
       return win;
