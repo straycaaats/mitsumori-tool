@@ -440,6 +440,8 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
         const company=companyInfo[customer.company]||{name:customer.company||'',address:'',tel:''};
         const coBlock='<div class="co-name">'+esc(company.name)+'</div>'+(company.address?'<div class="co-address">'+esc(company.address)+'</div><div class="co-address">'+esc(company.tel)+'</div>':'');
         html=String(html)
+          .replace('.exp-r td{background:#e8f3ff!important}', '.exp-r td{background:#fff!important}')
+          .replace('</style>', '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}</style>')
           .replace(/　御中/g,'　様')
           .replace(/<div class="co-name">[\s\S]*?<\/div>/,coBlock)
           .replace('.co-name{font-size:15.75pt;font-weight:700}', '.co-name{font-size:15.75pt;font-weight:700}.co-address{font-size:9.75pt;font-weight:400;line-height:1.45;white-space:nowrap}')
