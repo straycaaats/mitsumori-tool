@@ -634,5 +634,34 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   };
 })();
 </script>
+<script>
+/* 単位は「組」に統一。過去の保存データ・Sheetsから戻る旧「式」も開いた時点で直す。 */
+(function(){
+  const normalizeItems=items=>{let changed=false;(items||[]).forEach(item=>{if(item.unit==='式'){item.unit='組';changed=true}});return changed};
+  const normalizeAll=()=>{
+    let changed=false;
+    const masters=Catalog.masters();if(normalizeItems(masters)){Catalog.saveMasters(masters);changed=true}
+    const draft=Store.read(Store.keys.draft,null);if(draft&&normalizeItems(draft.items)){Store.write(Store.keys.draft,draft);changed=true}
+    const cases=Store.read(Store.keys.cases,[]);if(cases.some(record=>normalizeItems(record.items))){Store.write(Store.keys.cases,cases);changed=true}
+    return changed;
+  };
+  const start=App.start;
+  App.start=function(){normalizeAll();return start()};
+  const pull=Sync.pull;
+  Sync.pull=async function(){const result=await pull();if(normalizeAll())Sync.push().catch(()=>{});return result};
+  const removeOldUnit=()=>document.querySelectorAll('select').forEach(select=>{
+    if(select.value==='式')select.value='組';
+    select.querySelectorAll('option').forEach(option=>{if(option.value==='式'||option.textContent==='式')option.remove()});
+  });
+  new MutationObserver(removeOldUnit).observe(document.body,{childList:true,subtree:true});
+  const oldPrint=App.print;
+  App.print=function(){
+    const originalOpen=window.open;
+    window.open=function(){const win=originalOpen.apply(window,arguments);if(!win?.document)return win;const write=win.document.write.bind(win.document);win.document.write=html=>write(String(html).replace(/>式</g,'>組<'));return win};
+    try{return oldPrint()}finally{window.open=originalOpen}
+  };
+  removeOldUnit();
+})();
+</script>
 <script>App.start();</script>
 </body></html>
