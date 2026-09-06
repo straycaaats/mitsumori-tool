@@ -509,5 +509,130 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   };
 })();
 </script>
+<style>
+/* 明細の並び替え用。入力欄と誤タップしないよう、つまみだけをドラッグ可能にする。 */
+.item-drag-handle{cursor:grab;border:0;background:transparent;color:var(--muted);font-size:17px;line-height:1;padding:3px 2px;touch-action:none}.item-drag-handle:active{cursor:grabbing}.drag-item-over{outline:2px solid var(--blue)!important;outline-offset:-2px;background:#eaf3ff!important}.drag-table-head{width:26px}@media(max-width:760px){.item-line{grid-template-columns:24px minmax(0,1fr) 47px 32px 67px 78px 28px}.item-drag-handle{font-size:16px;padding:3px 0}}
+</style>
+<script>
+/* 明細のドラッグ並び替え。現在の作業中見積を先に保存してから再描画する。 */
+(function(){
+  let draggingIndex=null;
+  const draftKey=Store.keys.draft;
+  const move=(from,to)=>{
+    const draft=Store.read(draftKey,null);
+    if(!draft?.items||from===null||from===to||from<0||to<0||from>=draft.items.length||to>=draft.items.length)return;
+    const [item]=draft.items.splice(from,1);
+    draft.items.splice(to,0,item);
+    draft.updatedAt=new Date().toISOString();
+    Store.write(draftKey,draft);
+    /* App内部の作業データも確実に読み直す。保存済み案件やマスターは変更しない。 */
+    App.start();
+  };
+  const begin=(event,index)=>{
+    draggingIndex=index;
+    event.dataTransfer.effectAllowed='move';
+    event.dataTransfer.setData('text/plain',String(index));
+  };
+  const target=(event,index)=>{
+    event.preventDefault();
+    const from=Number(event.dataTransfer.getData('text/plain'));
+    if(Number.isInteger(from)&&from!==index)move(from,index);
+    draggingIndex=null;
+  };
+  function attach(node,index){
+    if(node.dataset.dragReady)return;
+    node.dataset.dragReady='1';
+    node.addEventListener('dragover',event=>{event.preventDefault();node.classList.add('drag-item-over')});
+    node.addEventListener('dragleave',()=>node.classList.remove('drag-item-over'));
+    node.addEventListener('drop',event=>{node.classList.remove('drag-item-over');target(event,index)});
+  }
+  function handle(index){
+    const button=document.createElement('button');
+    button.type='button';button.className='item-drag-handle';button.draggable=true;button.title='ドラッグして並べ替え';button.setAttribute('aria-label','明細を並べ替え');button.textContent='⋮⋮';
+    button.addEventListener('click',event=>event.stopPropagation());
+    button.addEventListener('dragstart',event=>begin(event,index));
+    return button;
+  }
+  function enhance(){
+    const head=document.querySelector('#rows')?.closest('table')?.querySelector('thead tr');
+    if(head&&!head.querySelector('.drag-table-head')){const th=document.createElement('th');th.className='drag-table-head';th.textContent='';head.prepend(th)}
+    document.querySelectorAll('#rows tr').forEach((row,index)=>{
+      attach(row,index);
+      if(!row.querySelector('.item-drag-handle')){const cell=document.createElement('td');cell.prepend(handle(index));row.prepend(cell)}
+    });
+    document.querySelectorAll('#cards .item-card').forEach((card,index)=>{
+      attach(card,index);
+      const line=card.querySelector('.item-line');
+      if(line&&!line.querySelector('.item-drag-handle'))line.prepend(handle(index));
+    });
+  }
+  new MutationObserver(enhance).observe(document.querySelector('#rows'),{childList:true});
+  new MutationObserver(enhance).observe(document.querySelector('#cards'),{childList:true});
+  setTimeout(enhance,0);
+})();
+</script>
+<script>
+/* 倉庫編集も入力した瞬間にローカル保存し、同期は短くまとめて送る。 */
+(function(){
+  let syncTimer;
+  const queueSync=()=>{clearTimeout(syncTimer);syncTimer=setTimeout(()=>Sync.push().catch(()=>{}),500)};
+  const later=fn=>setTimeout(fn,0);
+  const oldEditTemplate=App.editTemplate;
+  App.editTemplate=function(id){
+    oldEditTemplate(id);
+    const modal=document.querySelector('#modal');
+    const saveButton=modal?.querySelector('[onclick*="commitCleanTemplate"]');
+    const found=saveButton?.getAttribute('onclick')?.match(/commitCleanTemplate\('([^']+)'\)/);
+    const templateId=found?.[1]||id;
+    if(!modal||!templateId)return;
+    const persist=()=>{
+      const name=modal.querySelector('#cleanTName')?.value.trim()||'名称未設定';
+      const trade=modal.querySelector('#cleanTTrade')?.value||'other';
+      const masters=Catalog.masters();
+      const positions=new Map(masters.map((master,index)=>[master.id,index]));
+      const rows=[...modal.querySelectorAll('[data-clean-row]')].map(row=>{
+        const itemName=row.querySelector('.name')?.value.trim()||'';
+        if(!itemName)return null;
+        let itemId=row.dataset.masterId;
+        if(!itemId||!positions.has(itemId)){itemId=Catalog.id('m');row.dataset.masterId=itemId;positions.set(itemId,masters.length);masters.push({id:itemId})}
+        const item={id:itemId,trade,name:itemName,desc:row.querySelector('.desc')?.value.trim()||'',qty:+row.querySelector('.qty')?.value||0,unit:row.querySelector('.unit')?.value||'式',price:+row.querySelector('.price')?.value||0,group:row.querySelector('.group')?.value||''};
+        masters[positions.get(itemId)]=item;return item;
+      }).filter(Boolean);
+      Catalog.saveMasters(masters);
+      const templates=Catalog.templates(),index=templates.findIndex(template=>template.id===templateId),previous=index>=0?templates[index]:{};
+      const template={...previous,id:templateId,name,trade,items:rows.map(item=>item.id),startTile:!!modal.querySelector('#cleanStartSet')?.checked};
+      if(index>=0)templates[index]=template;else templates.push(template);
+      Catalog.saveTemplates(templates);queueSync();
+    };
+    modal.addEventListener('input',persist);
+    modal.addEventListener('change',persist);
+    modal.addEventListener('click',event=>{if(event.target.closest('.icon,.btn'))later(persist)});
+  };
+  /* 全画面倉庫の「編集」も、上の即保存版を通す。 */
+  App.warehouseEditSet=function(id){document.querySelector('#modal')?.classList.remove('warehouse-modal');App.editTemplate(id)};
+  const oldOpenMaster=App.openMaster;
+  App.openMaster=function(){
+    oldOpenMaster();
+    const modal=document.querySelector('#modal');if(!modal)return;
+    let masterId='';
+    const persist=()=>{
+      const name=modal.querySelector('#mName')?.value.trim();
+      if(!name)return;
+      const masters=Catalog.masters();
+      if(!masterId){masterId=Catalog.id('m');modal.dataset.autoMasterId=masterId;masters.push({id:masterId})}
+      const index=masters.findIndex(master=>master.id===masterId);
+      masters[index]={id:masterId,trade:'other',name,desc:modal.querySelector('#mDesc')?.value||'',qty:+modal.querySelector('#mQty')?.value||0,unit:modal.querySelector('#mUnit')?.value||'式',price:+modal.querySelector('#mPrice')?.value||0,group:modal.querySelector('#mGroup')?.value||''};
+      Catalog.saveMasters(masters);queueSync();
+    };
+    modal.addEventListener('input',persist);modal.addEventListener('change',persist);
+  };
+  const oldCommitMaster=App.commitMaster;
+  App.commitMaster=function(){
+    const modal=document.querySelector('#modal');
+    if(modal?.dataset.autoMasterId){App.openWarehouse();return}
+    oldCommitMaster();
+  };
+})();
+</script>
 <script>App.start();</script>
 </body></html>
