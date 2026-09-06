@@ -663,5 +663,76 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   removeOldUnit();
 })();
 </script>
+<style>
+/* 倉庫の単品は展開したその場で直せる。 */
+.warehouse-master{grid-template-columns:minmax(0,1fr) auto auto auto}.warehouse-master-editor{grid-column:1/-1;display:grid;grid-template-columns:1.2fr 1fr 58px 58px 78px 90px;gap:6px;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff}.warehouse-master-editor input,.warehouse-master-editor select{min-width:0;width:100%;border:1px solid var(--line);border-radius:6px;padding:6px}@media(max-width:760px){.warehouse-master{grid-template-columns:minmax(0,1fr) auto auto auto}.warehouse-master-editor{grid-template-columns:1fr 54px 58px}.warehouse-master-editor .master-desc,.warehouse-master-editor .master-group{display:none}.warehouse-master-editor input,.warehouse-master-editor select{font-size:13px;padding:7px}}
+</style>
+<script>
+/* 明細は入力中に再描画しない。値だけ即保存し、フォーカスを失った時だけ表示を整える。 */
+(function(){
+  const originalSetItem=App.setItem;
+  const sourceInfo=element=>{
+    const source=element?.getAttribute('oninput')||'';
+    const hit=source.match(/App\.setItem\((\d+),'(name|desc|qty|price|unit|group|linked)'/);
+    return hit?{index:+hit[1],key:hit[2]}:null;
+  };
+  const updateTotals=draft=>{
+    const work=(draft.items||[]).reduce((sum,item)=>sum+(+item.qty||0)*(+item.price||0),0),expense=+draft.expense||0,sub=work+expense,tax=Math.round(sub*.1),grand=sub+tax;
+    const yen=value=>'¥'+Math.round(value).toLocaleString('ja-JP');
+    const values={workSum:work,subSum:sub,taxSum:tax,grandSum:grand};
+    Object.entries(values).forEach(([id,value])=>{const node=document.querySelector('#'+id);if(node)node.textContent=yen(value)});
+  };
+  document.addEventListener('input',event=>{
+    const info=sourceInfo(event.target);
+    if(!info)return;
+    event.stopImmediatePropagation();
+    const draft=Store.read(Store.keys.draft,null),item=draft?.items?.[info.index];
+    if(!item)return;
+    const value=event.target.value;
+    item[info.key]=['qty','price'].includes(info.key)?(+value||0):value;
+    if(info.key==='qty')item.linked=false;
+    draft.updatedAt=new Date().toISOString();Store.write(Store.keys.draft,draft);updateTotals(draft);
+  },true);
+  document.addEventListener('focusout',event=>{
+    const info=sourceInfo(event.target);
+    /* 数量・単価は既存のblur処理が確定するため、ここでは文字・単位だけ確定する。 */
+    if(info&&!['qty','price'].includes(info.key))originalSetItem(info.index,info.key,event.target.value);
+  },true);
+})();
+</script>
+<script>
+/* 単品は倉庫内で展開編集、セット保存の終点は常に倉庫。 */
+(function(){
+  let syncTimer;
+  const sync=()=>{clearTimeout(syncTimer);syncTimer=setTimeout(()=>Sync.push().catch(()=>{}),450)};
+  const oldWarehouse=App.openWarehouse;
+  function decorateMasters(){
+    const masters=Catalog.masters();
+    document.querySelectorAll('#modal.warehouse-modal .warehouse-master').forEach((card,index)=>{
+      const master=masters[index];if(!master||card.dataset.masterReady)return;
+      card.dataset.masterReady='1';card.dataset.masterId=master.id;
+      const edit=document.createElement('button');edit.type='button';edit.className='btn sm';edit.textContent='編集';edit.onclick=()=>App.warehouseEditMaster(master.id);card.append(edit);
+    });
+  }
+  App.openWarehouse=function(){oldWarehouse();decorateMasters()};
+  App.warehouseEditMaster=function(id){
+    const card=document.querySelector('.warehouse-master[data-master-id="'+id+'"]');
+    const master=Catalog.masters().find(item=>item.id===id);if(!card||!master)return;
+    card.querySelector('.warehouse-master-editor')?.remove();
+    const esc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const editor=document.createElement('div');editor.className='warehouse-master-editor';
+    editor.innerHTML='<input class="master-name" value="'+esc(master.name)+'" placeholder="品名"><input class="master-desc" value="'+esc(master.desc)+'" placeholder="概要"><input class="master-qty" type="number" value="'+(+master.qty||0)+'"><select class="master-unit"><option '+(master.unit==='組'?'selected':'')+'>組</option><option '+(master.unit==='㎡'?'selected':'')+'>㎡</option><option '+(master.unit==='m'?'selected':'')+'>m</option><option '+(master.unit==='個'?'selected':'')+'>個</option><option '+(master.unit==='㎥'?'selected':'')+'>㎥</option></select><input class="master-price" type="number" value="'+(+master.price||0)+'"><select class="master-group"><option value="">連動なし</option><option value="sashCount">サッシ数</option><option value="concreteArea">コンクリ面積</option><option value="paintArea">塗装面積</option><option value="scaffoldArea">足場面積</option><option value="length">長さ</option></select>';
+    editor.querySelector('.master-group').value=master.group||'';
+    const save=()=>{
+      const masters=Catalog.masters(),index=masters.findIndex(item=>item.id===id);if(index<0)return;
+      masters[index]={...masters[index],name:editor.querySelector('.master-name').value.trim(),desc:editor.querySelector('.master-desc').value.trim(),qty:+editor.querySelector('.master-qty').value||0,unit:editor.querySelector('.master-unit').value,price:+editor.querySelector('.master-price').value||0,group:editor.querySelector('.master-group').value};
+      Catalog.saveMasters(masters);sync();
+    };
+    editor.addEventListener('input',save);editor.addEventListener('change',save);card.append(editor);
+  };
+  const oldCommitTemplate=App.commitCleanTemplate;
+  App.commitCleanTemplate=async function(id){const result=await oldCommitTemplate(id);App.openWarehouse();return result};
+})();
+</script>
 <script>App.start();</script>
 </body></html>
