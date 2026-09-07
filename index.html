@@ -734,5 +734,104 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   App.commitCleanTemplate=async function(id){const result=await oldCommitTemplate(id);App.openWarehouse();return result};
 })();
 </script>
+<style>
+/* 倉庫セット編集の安定化: 既存の編集画面を再利用せず、保存経路を一つにする。 */
+.stable-template-editor{display:grid;gap:10px}.stable-template-editor .edit-row{grid-template-columns:36px minmax(130px,1.3fr) minmax(110px,1fr) 72px 74px 96px 130px 36px 36px}.stable-template-editor .edit-row .btn,.stable-template-editor .edit-row .icon{min-width:36px;padding:5px}.stable-template-editor .editor-note{font-size:12px;color:var(--muted);margin:0}.stable-template-editor .start-set-toggle{margin:0}.stable-template-editor .save-state{font-size:12px;color:var(--muted);min-height:18px}@media(max-width:760px){.stable-template-editor .edit-row{display:flex;flex-wrap:wrap}.stable-template-editor .edit-row .name{flex:1 1 calc(100% - 92px)}.stable-template-editor .edit-row .desc,.stable-template-editor .edit-row .group{display:block;flex:1 1 100%}.stable-template-editor .edit-row .qty{width:72px}.stable-template-editor .edit-row .unit{width:76px}.stable-template-editor .edit-row .price{flex:1;min-width:120px}}
+</style>
+<script>
+/*
+  倉庫セット編集の一本化。
+  以前は「入力時の自動保存」「保存ボタン」「スタート画面用の追加処理」が
+  別々に同じセットを更新していたため、保存のたびにコピーが作られる余地があった。
+  以下では編集セッションごとに固定IDを一つだけ使い、同じIDを上書きする。
+*/
+(function(){
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const unitList=['組','㎡','m','個','㎥'];
+  const groupList=[['','連動なし'],['sashCount','サッシ数'],['concreteArea','コンクリ面積'],['paintArea','塗装面積'],['scaffoldArea','足場面積'],['length','長さ']];
+  let syncTimer;
+  const queueSync=()=>{clearTimeout(syncTimer);syncTimer=setTimeout(()=>Sync.push().catch(()=>{}),700)};
+  const row=(item={})=>'<div class="edit-row" data-stable-row data-master-id="'+esc(item.id||'')+'"><button class="btn sm" type="button" onclick="App.stableMoveRow(this,-1)">↑</button><input class="name" value="'+esc(item.name)+'" placeholder="品名"><input class="desc" value="'+esc(item.desc)+'" placeholder="概要"><input class="qty" type="number" inputmode="decimal" value="'+(+item.qty||0)+'"><select class="unit">'+unitList.map(unit=>'<option value="'+unit+'"'+(unit===(item.unit==='式'?'組':item.unit)?' selected':'')+'>'+unit+'</option>').join('')+'</select><input class="price" type="number" inputmode="numeric" value="'+(+item.price||0)+'"><select class="group">'+groupList.map(([key,label])=>'<option value="'+key+'"'+(key===(item.group||'')?' selected':'')+'>'+label+'</option>').join('')+'</select><button class="btn sm" type="button" onclick="App.stableMoveRow(this,1)">↓</button><button class="icon" type="button" onclick="App.stableRemoveRow(this)">×</button></div>';
+  function session(){return document.querySelector('#modal .stable-template-editor')}
+  function state(text){const node=session()?.querySelector('.save-state');if(node)node.textContent=text}
+  function collapseExactDuplicates(){
+    const seen=new Set(), unique=[];let changed=false;
+    Catalog.templates().forEach(template=>{
+      const key=[template.name||'',template.trade||'',(template.items||[]).join('|')].join('\u0001');
+      if(seen.has(key)){changed=true;return} seen.add(key);unique.push(template);
+    });
+    if(changed)Catalog.saveTemplates(unique);
+    return changed;
+  }
+  function saveEditor(push){
+    const editor=session();if(!editor)return false;
+    const id=editor.dataset.templateId;
+    const name=editor.querySelector('#stableTName').value.trim()||'名称未設定';
+    const trade=editor.querySelector('#stableTTrade').value||'other';
+    const masters=Catalog.masters();
+    const masterIndex=new Map(masters.map((master,index)=>[master.id,index]));
+    const items=[];
+    editor.querySelectorAll('[data-stable-row]').forEach(element=>{
+      const itemName=element.querySelector('.name').value.trim();
+      if(!itemName)return;
+      let masterId=element.dataset.masterId;
+      if(!masterId||!masterIndex.has(masterId)){
+        masterId=Catalog.id('m');element.dataset.masterId=masterId;masterIndex.set(masterId,masters.length);masters.push({id:masterId});
+      }
+      const master={id:masterId,trade,name:itemName,desc:element.querySelector('.desc').value.trim(),qty:+element.querySelector('.qty').value||0,unit:element.querySelector('.unit').value,price:+element.querySelector('.price').value||0,group:element.querySelector('.group').value};
+      masters[masterIndex.get(masterId)]=master;items.push(master);
+    });
+    if(!items.length){state('品名を入力すると保存されます');return false}
+    Catalog.saveMasters(masters);
+    const templates=Catalog.templates();
+    const at=templates.findIndex(template=>template.id===id);
+    const previous=at>=0?templates[at]:{};
+    const template={...previous,id,name,trade,items:items.map(item=>item.id),startTile:!!editor.querySelector('#stableStartSet').checked};
+    if(at>=0)templates[at]=template;else templates.push(template);
+    Catalog.saveTemplates(templates);
+    collapseExactDuplicates();
+    state(push?'同期しています…':'この端末に保存済み');
+    if(push){queueSync();state('保存済み')}
+    return true;
+  }
+  let persistTimer;
+  const schedule=()=>{clearTimeout(persistTimer);persistTimer=setTimeout(()=>saveEditor(true),350)};
+  App.editTemplate=function(id){
+    const current=id?Catalog.templates().find(template=>template.id===id):null;
+    const templateId=current?.id||Catalog.id('t');
+    const base=current||{id:templateId,name:'新しいセット',trade:'other',items:[],startTile:false};
+    const masters=Catalog.masters();
+    const rows=(base.items||[]).map(masterId=>masters.find(master=>master.id===masterId)).filter(Boolean);
+    const selectedTrade=String(base.trade||'').startsWith('start:')?'other':base.trade||'other';
+    const tradeOptions=[['sash','サッシ工事'],['bath','ユニットバス工事'],['concrete','コンクリ打設工事'],['paint','塗装工事'],['water','水回り工事'],['other','その他']].map(([value,label])=>'<option value="'+value+'"'+(value===selectedTrade?' selected':'')+'>'+label+'</option>').join('');
+    const modal=document.querySelector('#modal');modal.className='modal';
+    modal.innerHTML='<div class="stable-template-editor" data-template-id="'+esc(templateId)+'"><h2>セットを編集</h2><div class="field"><label>セット名</label><input id="stableTName" value="'+esc(base.name)+'"></div><div class="field"><label>工種</label><select id="stableTTrade">'+tradeOptions+'</select></div><label class="start-set-toggle"><input id="stableStartSet" type="checkbox"'+(base.startTile||String(base.trade||'').startsWith('start:')?' checked':'')+'> スタート画面の工事として表示</label><p class="editor-note">入力内容は自動保存されます。保存を押すと倉庫へ戻ります。</p><div id="stableRows" class="edit-rows">'+rows.map(row).join('')+'</div><div class="save-state">編集できます</div><div class="modal-actions"><button class="btn" type="button" onclick="App.stableAddRow()">＋ 項目を追加</button><button class="btn primary" type="button" onclick="App.stableCommitTemplate()">保存</button></div></div>';
+    document.querySelector('#modalBg').classList.add('open');
+    modal.addEventListener('input',schedule,{once:false});modal.addEventListener('change',schedule,{once:false});
+  };
+  App.stableAddRow=function(){const rows=document.querySelector('#stableRows');rows.insertAdjacentHTML('beforeend',row({qty:1,unit:'組',price:0}));state('入力してください')};
+  App.stableRemoveRow=function(button){button.closest('[data-stable-row]')?.remove();saveEditor(true)};
+  App.stableMoveRow=function(button,direction){const item=button.closest('[data-stable-row]'),other=direction<0?item.previousElementSibling:item.nextElementSibling;if(other)item.parentElement.insertBefore(direction<0?item:other,direction<0?other:item);saveEditor(true)};
+  App.stableCommitTemplate=function(){
+    const editor=session(),button=editor?.querySelector('.primary');if(!editor||editor.dataset.saving==='1')return;
+    editor.dataset.saving='1';if(button)button.disabled=true;
+    const saved=saveEditor(true);
+    if(saved){App.openWarehouse()}else{editor.dataset.saving='0';if(button)button.disabled=false}
+  };
+  App.commitCleanTemplate=function(){App.stableCommitTemplate()};
+  App.warehouseEditSet=function(id){App.editTemplate(id)};
+  App.newTemplate=function(){App.editTemplate(null)};
+  collapseExactDuplicates();
+})();
+</script>
+<script>
+/* Sheets通信を直列化する。編集途中の古い同期結果が新しい保存を上書きしない。 */
+(function(){
+  let traffic=Promise.resolve();
+  const push=Sync.push,pull=Sync.pull;
+  Sync.push=function(){traffic=traffic.catch(()=>{}).then(()=>push());return traffic};
+  Sync.pull=function(){traffic=traffic.catch(()=>{}).then(()=>pull());return traffic};
+})();
+</script>
 <script>App.start();</script>
 </body></html>
