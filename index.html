@@ -833,5 +833,37 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
   Sync.pull=function(){traffic=traffic.catch(()=>{}).then(()=>pull());return traffic};
 })();
 </script>
+<style>.example-choice{border-top:1px solid var(--line);padding-top:8px}.example-choice label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:3px}.example-choice select{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px;background:#fff}.example-qr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:7px;border:1.5px solid #286a8f;background:#f1faff;font-size:10pt;line-height:1.45}.example-qr img{width:72px;height:72px;background:#fff}.example-qr b{display:block;font-size:12pt;color:#123b59}</style>
+<script>
+/* 工事別施工例。選択値だけを見積データへ保存し、印刷時はQRで施工例を開ける。 */
+(function(){
+  const examples=[{id:'unit-bath-example',trade:'bath',title:'ユニットバス施工例',url:'https://straycaaats.github.io/mitsumori-tool/images/unit-bath-example.png',note:'施工前から完成までの工程をご覧いただけます。'}];
+  const draft=()=>Store.read(Store.keys.draft,{});
+  function ensureChoice(){
+    const summary=document.querySelector('.summary');if(!summary||summary.querySelector('#exampleSelect'))return;
+    const block=document.createElement('div');block.className='example-choice';
+    block.innerHTML='<label for="exampleSelect">施工例（印刷時にQRコードを載せる）</label><select id="exampleSelect"><option value="">載せない</option>'+examples.map(example=>'<option value="'+example.id+'">'+example.title+'</option>').join('')+'</select>';
+    const before=summary.querySelector('.sumrow');summary.insertBefore(block,before||null);
+    const select=block.querySelector('select');select.value=draft().exampleId||'';
+    select.addEventListener('change',()=>{const data=draft();data.exampleId=select.value;data.updatedAt=new Date().toISOString();Store.write(Store.keys.draft,data)});
+  }
+  const refreshChoice=()=>setTimeout(ensureChoice,0);
+  new MutationObserver(refreshChoice).observe(document.querySelector('#work'),{childList:true,subtree:true});refreshChoice();
+  ['newEstimate','loadCase'].forEach(name=>{const base=App[name];if(!base)return;App[name]=function(){const result=base.apply(this,arguments);const select=document.querySelector('#exampleSelect');if(select)select.value=draft().exampleId||'';return result}});
+  const basePrint=App.print;
+  App.print=function(){
+    const selected=examples.find(example=>example.id===draft().exampleId);if(!selected)return basePrint();
+    const realOpen=window.open,parts=[];
+    window.open=function(){return{document:{open(){},write(value){parts.push(value)},close(){}}}};
+    try{basePrint()}finally{window.open=realOpen}
+    let html=parts.join('');if(!html)return;
+    html=html.replace('</style></head>','.example-qr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:7px;border:1.5px solid #286a8f;background:#f1faff;font-size:10pt;line-height:1.45}.example-qr img{width:72px;height:72px;background:#fff}.example-qr b{display:block;font-size:12pt;color:#123b59}</style></head>');
+    const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(selected.url);
+    const box='<div class="example-qr"><img src="'+qr+'" alt="施工例QRコード"><div><b>'+selected.title+'</b>'+selected.note+'<br>スマホでQRを読み取ると施工例を確認できます。</div></div>';
+    html=html.replace('</section><section class="page meisai">',box+'</section><section class="page meisai">');
+    const win=realOpen('','_blank');if(!win){alert('印刷画面を開けませんでした。');return}win.document.open();win.document.write(html);win.document.close();
+  };
+})();
+</script>
 <script>App.start();</script>
 </body></html>
