@@ -859,10 +859,9 @@ const oldCommit=App.commitMaster;App.commitMaster=function(){const f=document.qu
     let html=parts.join('');if(!html)return;
     html=html.replace('</style></head>','.example-qr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:7px;border:1.5px solid #286a8f;background:#f1faff;font-size:10pt;line-height:1.45}.example-qr img{width:72px;height:72px;background:#fff}.example-qr b{display:block;font-size:12pt;color:#123b59}</style></head>');
     const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(selected.url);
-    const box='<div style="position:absolute;right:0;bottom:5mm"><img src="'+qr+'" alt="施工例QRコード" style="width:52px;height:52px;background:#fff"></div>';
-    /* 明細書右下の余白へ絶対配置するので、表紙・明細表とも高さを増やさない。 */
-    html=html.replace('.meisai{padding:3mm 7mm}', '.meisai{position:relative;padding:3mm 7mm}');
-    html=html.replace('<section class="page meisai">','<section class="page meisai">'+box);
+    const box='<div style="text-align:right;margin-top:8px"><img src="'+qr+'" alt="施工例QRコード" style="width:52px;height:52px;background:#fff"></div>';
+    /* 合計欄の後の余白へ置く。表や合計金額には重ねない。 */
+    html=html.replace('※上記金額は消費税込みの御見積金額です。</div></section>','※上記金額は消費税込みの御見積金額です。</div>'+box+'</section>');
     const win=realOpen('','_blank');if(!win){alert('印刷画面を開けませんでした。');return}win.document.open();win.document.write(html);win.document.close();
   };
 })();
